@@ -9,7 +9,7 @@ import io
 import sys
 import re
 
-#Functions
+# This function reads the commandline arguments and returns all the important information from them, such as the output destination and files to be processed.
 def ParseArgs():
 	#return values
 	OutputPath = None
@@ -68,26 +68,71 @@ def ParseArgs():
 	#return parsed and gathered data
 	return OutputPath, files
 
-def ParseTermBank(file, tree):
+def _LoadTermBank(file):
 	if not isinstance(file, pathlib.Path):
-		print(f"Error: Parsers.ParseTermBank: file parameter is incorrect type. Got {type(file)} and not pathlib.Path!")
-		return
-	if not isinstance(tree, Dictionary.DictTree):
-		print(f"Error: Parsers.ParseTermBank: tree parameter is incorrect type. Got {type(tree)} expected Dictionary.DictTree!")
-		return
+		print(f"Error: Parsers._LoadTermBank: file parameter is incorrect type. Got {type(file)} and not pathlib.Path!")
+		return None
 
 	data = None
-	try:
+	"""try:
 		with file.open() as f:
 			data = json.loads(f.read())
 	except:
-		print(f"Error: Parsers.ParseTermBank: Unable to read or parse {file}.")
-		return
+		print(f"Error: Parsers._LoadTermBank: Unable to read or parse {file}.")
+		return"""
+	with open(file, encoding="utf-8", mode="r") as f:
+			data = json.load(f)
 
 	if not isinstance(data, list):
-		print(f"Error: Parsers.ParseTermBank: current term bank is not formated as a list: got {type(data)}. File: {file}.")
+		print(f"Error: Parsers._LoadTermBank: current term bank is not formated as a list: got {type(data)}. File: {file}.")
+		return None
+
+	return data
+
+
+# This function adds all the terms and readings from the term_bank_<number>.json file to the provided tree
+def ParseTermsFromBank(file, tree):
+	if not isinstance(tree, Dictionary.DictTree):
+		print(f"Error: Parsers.ParseTermsFromBank: tree parameter is incorrect type. Got {type(tree)} expected Dictionary.DictTree!")
+		return
+
+	data = _LoadTermBank(file)
+	if not data:
+		print("Error: Parsers.ParseTermsFromBank: No data returned, exiting")
 		return
 
 	for item in data:
-		if instanceof(item, list):
+		if isinstance(item, list):
 			tree.InsertListItem(item)
+
+def ProcessTermBank(file, tree):
+	if not isinstance(tree, Dictionary.DictTree):
+		print(f"Error: Parsers.ProcessTermBank: tree parameter is incorrect type. Got {type(tree)} expected Dictionary.DictTree!")
+		return
+
+	data = _LoadTermBank(file)
+	if not data:
+		print("Error: Parsers.ProcessTermBank: No data returned, exiting")
+		return
+
+	for item in data:
+		if not isinstance(item, list) or len(item) != 8:
+			print(f"Error: Parsers.ProcessTermBank: item in {file} has unexpected format:")
+			if not isinstance(item, list):
+				print(f"Type is not string, but {type(item)}")
+			else:
+				print(f"Has incorrect number of elements: {len(item)}: {item}")
+			continue
+
+		terms = item[5]
+		for term in terms:
+			if isinstance(term, str):
+				#handle term is definition as string
+				continue
+
+			if isinstance(term, dict):
+				#handle term is structured content
+				continue
+
+			print(f"Error: Parsers.ProcessTermBank: Unhandled term format {type(item)}")
+

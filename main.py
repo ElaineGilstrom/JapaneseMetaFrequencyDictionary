@@ -15,5 +15,16 @@ if len(sys.argv) == 1:
 	print("\t-o <directory name> - the directory to output the frequency dictionary to (zip this directory to complete the dictionary)")
 	sys.exit(0)
 
+sys.stdout.reconfigure(encoding="utf-8")
+
 OutputPath, files = Parsers.ParseArgs()
-print(OutputPath)
+
+tree = Dictionary.DictTree()
+
+#Generate tree form dictionary from set of terms
+for file in files:
+	Parsers.ParseTermsFromBank(file, tree)
+
+#Parsers.ParseTermsFromBank(files[10], tree)
+
+tree.PrintWords()
