@@ -23,8 +23,11 @@ tree = Dictionary.DictTree()
 
 #Generate tree form dictionary from set of terms
 for file in files:
+	print(f"Importing terms from {file}")
 	Parsers.ParseTermsFromBank(file, tree)
 
 #Parsers.ParseTermsFromBank(files[10], tree)
+print(f"Processing {files[0]}")
+Parsers.ProcessTermBank(files[0], tree)
 
-tree.PrintWords()
+tree.PrintWords(threshold=10)

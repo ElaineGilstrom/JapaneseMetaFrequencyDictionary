@@ -136,7 +136,10 @@ def ProcessTermBank(file, tree):
 		print("Error: Parsers.ProcessTermBank: No data returned, exiting")
 		return
 
-	for item in data:
+	totalItems = len(data)
+	updateQ = totalItems / 10
+
+	for i, item in enumerate(data):
 		if not isinstance(item, list) or len(item) != 8:
 			print(f"Error: Parsers.ProcessTermBank: item in {file} has unexpected format:")
 			if not isinstance(item, list):
@@ -149,6 +152,9 @@ def ProcessTermBank(file, tree):
 		if not isinstance(terms, list):
 			print(f"Error: Parsers.ProcessTermBank: item[5] not list. Got {type(terms)}")
 			continue
+
+		if i % updateQ == 0:
+			print(f"\t{i} of {totalItems} processed.")
 
 		for term in terms:
 			if isinstance(term, str):

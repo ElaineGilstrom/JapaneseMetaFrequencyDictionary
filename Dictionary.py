@@ -11,8 +11,25 @@ class DictTreeNode:
 		self.count = 0 if isWord else None
 		self.conjugationStem = None
 
-	def inc(self):
+	#Returns child and true if child is found, else returns self and False
+	def GetChild(self, child=""):
+		if len(child) == 0:
+			print("Error: Dictionary.DictTreeNode.GetChild: No child provided")
+			return self, False
+		if len(child) > 1:
+			print("Error: Dictionary.DictTreeNode.GetChild: Child is too long:", child)
+			return self, False
+
+		if child in self.children:
+			return self.children[child], True
+		
+		return self, False
+
+	def Inc(self):
 		self.count += 1
+
+	def IsWord(self):
+		return isinstance(self.count, int)
 
 	def SetVerbStem(self, link, rules):
 		if not isinstance(link, DictTreeNode):
@@ -32,11 +49,11 @@ class DictTreeNode:
 		if not self.count:
 			self.count = 0
 
-	def PrintWords(self, partial):
-		if isinstance(self.count, int):
-			#partial.encode("utf-8")
+	def PrintWords(self, partial, threshold=0):
+		if isinstance(self.count, int) and self.count >= threshold:
 			print(f"{partial:25}{self.count}")
-		for k,v in self.children.items():
+		
+		for k, v in self.children.items():
 			v.PrintWords(partial + k)
 
 
@@ -55,8 +72,8 @@ class DictTree:
 
 		node = self.head
 		for i in range(0, len(word)):
-			if word[i] in node.children:
-				node = node.children[word[i]]
+			node, found = node.GetChild(word[i])
+			if found:
 				continue
 			tmp = DictTreeNode(i + 1 == len(word))
 			node.children[word[i]] = tmp
@@ -100,6 +117,33 @@ class DictTree:
 		#	nodeTerm.SetVerbStem()
 		#	if nodeReading: do the same for reading
 
-	def PrintWords(self):
+	def PrintWords(self, threshold=0):
 		for k, v in self.head.children.items():
-			v.PrintWords(k)
+			v.PrintWords(k, threshold)
+
+	def ProcessDefintion(self, term=""):
+		word = None
+		wordIndex = None
+		i = 0
+		node = self.head
+
+		while i < len(term):
+			node, found = node.GetChild(term[i])
+			if found:
+				if node.IsWord():
+					word = node
+					wordIndex = i
+				i += 1
+				continue
+
+			if not word or not isinstance(wordIndex, int):
+				#TODO: Add logging for unknown words
+				i += 1
+				continue
+
+			word.Inc()
+			i = wordIndex + 1
+			word = None
+			wordIndex = None
+			node = self.head
+
