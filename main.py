@@ -27,7 +27,8 @@ for file in files:
 	Parsers.ParseTermsFromBank(file, tree)
 
 #Parsers.ParseTermsFromBank(files[10], tree)
-print(f"Processing {files[0]}")
-Parsers.ProcessTermBank(files[0], tree)
+for file in files:
+	print(f"Processing {file}")
+	Parsers.ProcessTermBank(file, tree)
 
 tree.PrintWords(threshold=10)

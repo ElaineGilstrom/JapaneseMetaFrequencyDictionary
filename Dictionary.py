@@ -61,6 +61,7 @@ class DictTreeNode:
 class DictTree:
 	def __init__(self):
 		self.head = DictTreeNode()
+		self.CharactersProcessed = 0
 
 	def __insert(self, word):
 		if not isinstance(word, str):
@@ -146,4 +147,6 @@ class DictTree:
 			word = None
 			wordIndex = None
 			node = self.head
+
+		self.CharactersProcessed += len(term)
 
