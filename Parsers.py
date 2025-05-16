@@ -105,6 +105,27 @@ def ParseTermsFromBank(file, tree):
 		if isinstance(item, list):
 			tree.InsertListItem(item)
 
+def _HandleStructuredContent(term, tree):
+	if not isinstance(term, dict):
+		print(f"Error: Parsers._HandleStructuredContent: non dict passed as term. Got {type(term)}")
+		return
+	if not isinstance(tree, Dictionary.DictTree):
+		print(f"Error: Parsers._HandleStructuredContent: tree param not tree, got: {type(tree)}")
+		return
+
+	if not "content" in term:
+		print(f"Error: Parsers._HandleStructuredContent: no content tag in term: {term}")
+		return
+
+	content = term["content"]
+	if not isinstance(content, list):
+		print(f"Error: Parsers._HandleStructuredContent: Content in term is not list. Got {type(content)}")
+		return
+
+	for item in content:
+		if isinstance(item, str):
+			tree.ProcessDefintion(item)
+
 def ProcessTermBank(file, tree):
 	if not isinstance(tree, Dictionary.DictTree):
 		print(f"Error: Parsers.ProcessTermBank: tree parameter is incorrect type. Got {type(tree)} expected Dictionary.DictTree!")
@@ -125,13 +146,19 @@ def ProcessTermBank(file, tree):
 			continue
 
 		terms = item[5]
+		if not isinstance(terms, list):
+			print(f"Error: Parsers.ProcessTermBank: item[5] not list. Got {type(terms)}")
+			continue
+
 		for term in terms:
 			if isinstance(term, str):
 				#handle term is definition as string
+				tree.ProcessDefintion(term)
 				continue
 
 			if isinstance(term, dict):
 				#handle term is structured content
+				_HandleStructuredContent(term, tree)
 				continue
 
 			print(f"Error: Parsers.ProcessTermBank: Unhandled term format {type(item)}")
