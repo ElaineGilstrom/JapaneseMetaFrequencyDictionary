@@ -5,6 +5,9 @@ import Parsers
 
 #global modules
 import sys
+import json
+import pathlib
+import io
 
 
 #Main Program Sequence
@@ -31,4 +34,17 @@ for file in files:
 	print(f"Processing {file}")
 	Parsers.ProcessTermBank(file, tree)
 
-tree.PrintWords(threshold=10)
+#tree.PrintWords(threshold=10)
+print("Exporting Index")
+OutputPath.mkdir(exist_ok=True, parents=True)
+with open(OutputPath / "index.json", "w", encoding="utf-8") as f:
+	json.dump(tree.GenerateIndex(), f, ensure_ascii=False)
+
+print("Exporting Term Bank")
+with open(OutputPath / "term_meta_bank_1.json", "w", encoding="utf-8") as f:
+	json.dump(tree.GenerateFrequencyBank(), f, ensure_ascii=False)
+
+print("Done :)")
+#TODO: Implement tree to frequency formatted list
+#TODO: Export said list to file
+#TODO: Add Index.json that incudes list of files used to generate frequency dict
