@@ -195,6 +195,7 @@ class DictTree:
 			print(f"Error: Dictionary.DictTree.InsertListItem: malformed reading in item, got type {type(reading)}, expected str.")
 			return
 
+		#TODO: Refactor to link the term to the reading
 		nodeTerm = self.__insert(term)
 		nodeReading = None
 		if len(reading) > 0:
@@ -238,10 +239,11 @@ class DictTree:
 			wordIndex = None
 			node = self.head
 
+		#Add length of definition to the number of characters processed so far
 		self.CharactersProcessed += len(term)
 
 	#Generates the contents of index.json
-	def GenerateIndex(self):
+	def GenerateIndex(self, type=0):
 		index = {}
 		index["title"] = "DefFreq"
 		index["format"] = 3
@@ -251,17 +253,24 @@ class DictTree:
 		index["url"] = ""#TODO: Add link to github
 		#TODO: Implement and add list of dictionaries
 		index["description"] = "Frequencies of every word that shows up at least one time in a defintion from the following dictionaries: "
+		if type == 0:
+			index["frequencyMode"] = "occurrence-based"
 		return index
 
 	#Generates the contents of term_meta_bank_<Number>.json
 	# TODO: Decide how to break this up if file ends up being too big
-	def GenerateFrequencyBank(self):
+	def GenerateFrequencyBank(self, type=0):
 		#Element Formats:
 		#	[Word In Kana, "freq",{"value": int, "displayValue": String}]
 		#	[Kanji Word, "freq", {"reading": reading as string, "frequency":{"value": int, "displayValue": String}}]
 		data = []
 		self.head.GatherWordsToTerms("", data)
-		#TODO: Add options for percentile (float(index) / float(len), rounded to 3 digits * 100)
-		#TODO: Add options for ranking (index is rank)
+		if not type:
+			return data
+		#if type == 1:
+			 #TODO: Add options for percentile (float(index) / float(len), rounded to 3 digits * 100)
+		#elif type == 2:
+			#TODO: Add options for ranking (index is rank)
+			#TODO: Figure out what to do with reading vs kanji and the missing link
 		return data
 

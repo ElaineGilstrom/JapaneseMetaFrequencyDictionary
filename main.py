@@ -12,8 +12,8 @@ import io
 
 #Main Program Sequence
 if len(sys.argv) == 1:
-	print("Usage: {sys.argv[0]} <args> [list of files and directories to process]")
-	print("\tExample: {sys.argv[0]} -o ./output ./dict1 ./dict2")
+	print(f"Usage: {sys.argv[0]} <args> [list of files and directories to process]")
+	print(f"\tExample: {sys.argv[0]} -o ./output ./dict1 ./dict2")
 	print("arguments:")
 	print("\t-o <directory name> - the directory to output the frequency dictionary to (zip this directory to complete the dictionary)")
 	sys.exit(0)
@@ -36,6 +36,7 @@ for file in files:
 
 #tree.PrintWords(threshold=10)
 print("Exporting Index")
+#TODO: Put in seperate file
 OutputPath.mkdir(exist_ok=True, parents=True)
 with open(OutputPath / "index.json", "w", encoding="utf-8") as f:
 	json.dump(tree.GenerateIndex(), f, ensure_ascii=False)
