@@ -15,6 +15,7 @@ def ParseArgs():
 	OutputPath = None
 	files = []
 
+	#Iterate over list of arguments
 	i = 1
 	while i < len(sys.argv):
 		#Set output file if -o arg is given
@@ -47,9 +48,21 @@ def ParseArgs():
 				sys.exit(0)
 			continue
 
-		#if its a file, add it to the list of files to process
+		#if its a file, add it to the list of files to processed
 		if not pth.is_dir():
-			files.append(pth)
+			#But only if it is actually a term bank
+			if re.match(r"term_bank_\d+.json", sys.argv[i]):
+				files.append(pth)
+				continue
+
+			#See if user wants to add it anyway
+			print(f"The file {sys.argv[i]} does not follow the naming convention of a term bank.")
+			ans = input("\tAttempt to process anyway? y/n: ")
+			if ans.lower()[0] == 'y':
+				print("Added.")
+				files.append(pth)
+			else:
+				print("Skipping.")
 			continue
 
 		#if its a directory, crawl it and add all the term banks to the list
@@ -68,21 +81,18 @@ def ParseArgs():
 	#return parsed and gathered data
 	return OutputPath, files
 
+#Open and parse the given file as a json file and verify the root structure is a list
 def _LoadTermBank(file):
 	if not isinstance(file, pathlib.Path):
 		print(f"Error: Parsers._LoadTermBank: file parameter is incorrect type. Got {type(file)} and not pathlib.Path!")
 		return None
 
+	#Open the file and load the data. Encoding MUST be utf-8 or the program will not work
 	data = None
-	"""try:
-		with file.open() as f:
-			data = json.loads(f.read())
-	except:
-		print(f"Error: Parsers._LoadTermBank: Unable to read or parse {file}.")
-		return"""
 	with open(file, encoding="utf-8", mode="r") as f:
-			data = json.load(f)
+		data = json.load(f)
 
+	#Verify it is a list
 	if not isinstance(data, list):
 		print(f"Error: Parsers._LoadTermBank: current term bank is not formated as a list: got {type(data)}. File: {file}.")
 		return None
@@ -101,11 +111,19 @@ def ParseTermsFromBank(file, tree):
 		print("Error: Parsers.ParseTermsFromBank: No data returned, exiting")
 		return
 
+	#Root file structure is a list, so iterate over every element and pass it on to the tree
 	for item in data:
+		#The terms should all be formatted as lists
 		if isinstance(item, list):
 			tree.InsertListItem(item)
+		else:
+			print(f"Error: Parsers.ProcessTermBank: found item that is not list, got {type(item)}")
 
+#A helper function to handle to structured content format of defintion defined by the
+# term bank meta v3 format
+#It simply passes all of the text formatted parts of the defition to the tree, ignoring the other parts.
 def _HandleStructuredContent(term, tree):
+	#Verify inputs and format
 	if not isinstance(term, dict):
 		print(f"Error: Parsers._HandleStructuredContent: non dict passed as term. Got {type(term)}")
 		return
@@ -122,24 +140,31 @@ def _HandleStructuredContent(term, tree):
 		print(f"Error: Parsers._HandleStructuredContent: Content in term is not list. Got {type(content)}")
 		return
 
+	#Send content off to be processed
 	for item in content:
 		if isinstance(item, str):
 			tree.ProcessDefintion(item)
 
+#Crawls the given term bank v3 file for definitions and passes them on to tree for processing
 def ProcessTermBank(file, tree):
+	#Verify inputs
 	if not isinstance(tree, Dictionary.DictTree):
 		print(f"Error: Parsers.ProcessTermBank: tree parameter is incorrect type. Got {type(tree)} expected Dictionary.DictTree!")
 		return
 
+	#Load the file
 	data = _LoadTermBank(file)
 	if not data:
 		print("Error: Parsers.ProcessTermBank: No data returned, exiting")
 		return
 
+	#Setup processing "bar"
 	totalItems = len(data)
 	updateQ = totalItems / 10
 
+	#Enumerating so progress can be tracked
 	for i, item in enumerate(data):
+		#Verify item is correct format
 		if not isinstance(item, list) or len(item) != 8:
 			print(f"Error: Parsers.ProcessTermBank: item in {file} has unexpected format:")
 			if not isinstance(item, list):
@@ -148,24 +173,29 @@ def ProcessTermBank(file, tree):
 				print(f"Has incorrect number of elements: {len(item)}: {item}")
 			continue
 
+		#Get the definitions
 		terms = item[5]
 		if not isinstance(terms, list):
 			print(f"Error: Parsers.ProcessTermBank: item[5] not list. Got {type(terms)}")
 			continue
 
+		#Update processing "bar"
 		if i % updateQ == 0:
-			print(f"\t{i} of {totalItems} processed.")
+			#print(f"\t{i} of {totalItems} processed.")
+			print(f"{float(i) / totalItems * 100:.0f}% ", end="")
 
+		#Pass defintions off to tree for processing
 		for term in terms:
+			#Handle simple definitions
 			if isinstance(term, str):
 				#handle term is definition as string
 				tree.ProcessDefintion(term)
 				continue
 
+			#Handle structured content
 			if isinstance(term, dict):
-				#handle term is structured content
 				_HandleStructuredContent(term, tree)
 				continue
 
 			print(f"Error: Parsers.ProcessTermBank: Unhandled term format {type(item)}")
-
+	print()

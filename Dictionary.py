@@ -1,6 +1,8 @@
 
 import datetime
 
+#Retrieves the frequency information from a term meta bank v3 formatted term
+# Returns None if value is unretrievable 
 def __GetValFromTerm(term):
 	if not isinstance(term, list):
 		print(f"Error: Dictionary.__GetValFromTerm: term param is not list. Got {type(term)}")
@@ -16,22 +18,29 @@ def __GetValFromTerm(term):
 		print(f"Error: Dictionary.__GetValFromTerm: term param is malformed. Missing both \"value\" and \"frequency\" entries: {term[2]}")
 		return None
 
+	#Handle kana term
 	if "value" in term[2]:
 		return term[2]["value"]
 
+	#Handle Kanji term
 	if not "value" in term[2]["frequency"]:
 		print(f"Error: Dictionary.__GetValFromTerm: term param is malformed. Missing \"value\" in \"frequency\": {term[2]}")
 		return None
 
 	return term[2]["frequency"]["value"]
 
+#Inserts the given term into the given term bank in the correct possition
+# All terms must be in the term meta bank v3 format, both the ones in the bank and the given term.
+# Order is largest to smallest.
 def InsertTerm(term, bank):
+	#Verify inputs
 	if not isinstance(term, list):
 		print(f"Error: Dictionary.InsertTerm: term param is not list. Got {type(term)}")
 		return
 	if not isinstance(bank, list):
 		print(f"Error: Dictionary.InsertTerm: bank param is not list. Got {type(bank)}")
 		return
+	#Get the occurance count
 	termVal = __GetValFromTerm(term)
 	if not termVal:
 		print(f"Error: Dictionary.InsertTerm: Unable to retrieve value from term. Not insterting term: {term}")
@@ -41,13 +50,16 @@ def InsertTerm(term, bank):
 	low = 0
 	hi = len(bank)
 	while True:
+		#Exit condition
 		if low >= hi:
 			bank.insert(low, term)
 			return
 
+		#Calculate the middle and retrieve its sort value
 		midIndex = int((hi - low) / 2) + low
 		midVal = __GetValFromTerm(bank[midIndex])
 		if not midVal:
+			#TODO: Decide if this should terminate program or not
 			print(f"Error: Dictionary.InsertTerm: Unable to retrieve value from bank. Not insterting term: {term}")
 			return
 
@@ -63,7 +75,9 @@ def InsertTerm(term, bank):
 		return
 
 	
-
+#A Class that handles conjugation rules, deconjugation and the link between a stem and its dictionary form
+# NOT CURRENTLY IMPLEMENTED
+#TODO: Implement
 class ConjugationLinkage:
 	#TODO: Refactor this. Because multiple verbs and adjectives can have the same stem, this needs to be structured differently
 	def __init__(self, link, rules):
@@ -93,13 +107,17 @@ class DictTreeNode:
 		
 		return self, False
 
+	#Increments count
 	def Inc(self):
 		self.count += 1
 
+	#Returns if this node represents a word
 	def IsWord(self):
 		return isinstance(self.count, int)
 
-	def SetVerbStem(self, link, rules):
+	#Adds a link between the stem and its unconjugated form, and adds the rules for conjugation
+	# Not currently fully implemented!
+	def SetStem(self, link, rules):#TODO: Finish implementation
 		if not isinstance(link, DictTreeNode):
 			print(f"Error: Dictionary.DictTreeNode.SetVerbStem: wrong type passed to SetVerbStem. Got <{type(link)}> expected <DictTreeNode>.")
 			return
@@ -113,38 +131,50 @@ class DictTreeNode:
 		else:
 			self.conjugationStem = [ConjugationLinkage(link, rules)]
 
+	#Flags node as a word
 	def SetWord(self):
 		if not self.count:
 			self.count = 0
 
+	#Adds link from a kanji term to its reading
 	def SetReading(self, reading, link):
 		self.reading = (reading, link)
 
+	#A function that prints out all the words in the tree with a depth first traversal
+	# partial is the word compiled during the traversal, threshold is the minimum numher of occurances required to be printed out
 	def PrintWords(self, partial, threshold=0):
 		if isinstance(self.count, int) and self.count >= threshold:
 			print(f"{partial:25}{self.count}")
 		
-		for k, v in self.children.items():
-			v.PrintWords(partial + k)
+		for character, child in self.children.items():
+			child.PrintWords(partial + character)
 
+	#Traverses the tree and adds all found words with at least one occurance to term bank
+	# partial is the word compiled during the traversal, bank is the bank of terms
 	def GatherWordsToTerms(self, partial, bank):
+		#Verify inputs
 		if not isinstance(partial, str):
 			print(f"Error: Dictionary.DictTreeNode.__GatherWordsToTerms: partial either not string. Got {type(partial)}")
 			return
 
+		#only export words with at least one occurance
 		if self.IsWord() and self.count > 0:
+			#Compile info into frequency metadata
 			tmp = {"value":self.count,"displayValue":f"{self.count}"}
 			if self.reading:
+				#If word has a reading, reformat the meta data into the reading format
 				tmp["displayValue"] = f"{self.reading[1].count}㋕、{self.count}漢字"
 				tmp = {"reading":self.reading[0], "frequency":tmp}
 			tmp2 = [partial, "freq", tmp]
+			#Add term to bank
 			InsertTerm(tmp2, bank)
 
-		for k, v in self.children.items():
-			#print(f"Processing Subtree of {k}")
+		#Proceed onto children (the depth first traversal)
+		for character, child in self.children.items():
+			#print(f"Processing Subtree of {character}")
 			#if len(partial) == 0:
-			#	print(f"Processing Subtree of {k}")
-			v.GatherWordsToTerms(partial + k, bank)
+			#	print(f"Processing Subtree of {character}")
+			child.GatherWordsToTerms(partial + character, bank)
 
 
 class DictTree:
@@ -153,7 +183,9 @@ class DictTree:
 		self.CharactersProcessed = 0
 		self.DictsIncluded = []
 
+	#Helper function to actually insert the word into the tree
 	def __insert(self, word):
+		#Verify that the word is indeed a word
 		if not isinstance(word, str):
 			print(f"Error: Dictionary.DictTree.insert: Argument word passed as non-string type <{type(word)}> with value [{word}].")
 			return None
@@ -161,19 +193,30 @@ class DictTree:
 			print("Error: Dictionary.DictTree.insert: empty word passed as arg.")
 			return None
 
+		#Traverse the tree, making missing nodes along the way, until the node representing the word is found
 		node = self.head
 		for i in range(0, len(word)):
+			#If child found, node is replaced with child and found is true.
+			# else, node isn't replaced and found is false
 			node, found = node.GetChild(word[i])
 			if found:
+				#If node was found, just continue on
 				continue
-			tmp = DictTreeNode(i + 1 == len(word))
+
+			#If node wasn't found, add the missing node
+			tmp = DictTreeNode(i + 1 == len(word))# Param states: unless we are at the end of the word, the node is not a word
 			node.children[word[i]] = tmp
 			node = tmp
 
+		#If word exists as a part of another word, flag the node as a word
+		# ex: 品 added after 品物
 		node.SetWord()
 		return node
 
+	#Takes in a term bank v3 item, grabs the required information from it,
+	# and adds it to the tree
 	def InsertListItem(self, item):
+		#Verify it is indeed formatted as an item
 		if not isinstance(item, list):
 			print(f"Error: Dictionary.DictTree.InsertListItem: item is not of type list, type {type(item)}.")
 			return
@@ -183,10 +226,12 @@ class DictTree:
 			print(item)
 			return
 
+		#Get requisite information
 		term = item[0]
 		reading = item[1]
 		deinflectionRules = item[3]
 
+		#Verify again that everything is what it should be
 		if not isinstance(term, str):
 			print(f"Error: Dictionary.DictTree.InsertListItem: malformed term in item, got type {type(term)}, expected str.")
 			return
@@ -195,11 +240,15 @@ class DictTree:
 			print(f"Error: Dictionary.DictTree.InsertListItem: malformed reading in item, got type {type(reading)}, expected str.")
 			return
 
+		#Add the term and reading to the tree
 		#TODO: Refactor to link the term to the reading
 		nodeTerm = self.__insert(term)
 		nodeReading = None
 		if len(reading) > 0:
 			nodeReading = self.__insert(reading)
+			#Link term and reading. Cannot differentiate hommophones.
+			# ie: 収監、週刊、週間 and 習慣 all point to the same node, the one that represents しゅうかん
+			nodeTerm.SetReading(reading, nodeReading)
 
 		#TODO: Implement. 
 		#	1: Use conjigation rules to get stem form, may be possible to just remove last mora. See: Godan verbs conjigate into 5 forms anyway
@@ -209,30 +258,42 @@ class DictTree:
 		#	nodeTerm.SetVerbStem()
 		#	if nodeReading: do the same for reading
 
+	#Prints all the words in the tree out using a depth first traversal
 	def PrintWords(self, threshold=0):
-		for k, v in self.head.children.items():
-			v.PrintWords(k, threshold)
+		#iterate over all the children and call helper function on them
+		for character, child in self.head.children.items():
+			child.PrintWords(character, threshold)
 
+	#Takes in a term defintion and adds the occurances of words to the tree
 	def ProcessDefintion(self, term=""):
+		#Loop setup
 		word = None
 		wordIndex = None
 		i = 0
 		node = self.head
 
+		#Loop to iterate over term and match words 
 		while i < len(term):
+			#Get the child of node that corresponds to the current character in the term
+			# If it wasn't found, found will be False, if it was it will be True and node will be replaced with the child
 			node, found = node.GetChild(term[i])
 			if found:
+				#If the current character represents the end of a word, save the word for later
 				if node.IsWord():
 					word = node
 					wordIndex = i
 				i += 1
 				continue
 
+			#If word is None or there is no index attached to it, 
+			#	then we are in unknown word that should be skipped
 			if not word or not isinstance(wordIndex, int):
 				#TODO: Add logging for unknown words
 				i += 1
 				continue
 
+			#If the program gets here, that means the longest match for a word in the definintion has been found
+			#	so, it increments the count on the word, sets i back to the end of the word and resets everything else
 			word.Inc()
 			i = wordIndex + 1
 			word = None
