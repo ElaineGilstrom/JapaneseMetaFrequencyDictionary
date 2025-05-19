@@ -51,7 +51,7 @@ def ParseArgs():
 		#if its a file, add it to the list of files to processed
 		if not pth.is_dir():
 			#But only if it is actually a term bank
-			if re.match(r"term_bank_\d+.json", sys.argv[i]):
+			if re.match(r"term_bank_\d+.json", str(pth)):
 				files.append(pth)
 				continue
 
@@ -132,12 +132,36 @@ def _HandleStructuredContent(term, tree):
 		return
 
 	if not "content" in term:
+		#content is a link to another term
+		#if "href" in term:
+		#	return
+		#Content is an image
+		if "type" in term and term["type"] == "image":
+			return
 		print(f"Error: Parsers._HandleStructuredContent: no content tag in term: {term}")
 		return
 
 	content = term["content"]
 	if not isinstance(content, list):
+		#Exception: Content is other known type
+		if isinstance(content, dict):
+			#content is a link to another term
+			if "href" in content:
+				return
+
+			if "type" in content:
+				#Content is an image
+				if content["type"] == "image":
+					return
+			if "tag" in content:
+				#TODO: Work to understand this field. Seems to be for encoding a definition in HTML, but don't know if tag is always defined or not
+				# MAYBE implement workflow to process html? seems rare and not worth it though.
+				if content["tag"] == "span":
+					return
+
+
 		print(f"Error: Parsers._HandleStructuredContent: Content in term is not list. Got {type(content)}")
+		print(f"\t{content}")
 		return
 
 	#Send content off to be processed
@@ -198,4 +222,4 @@ def ProcessTermBank(file, tree):
 				continue
 
 			print(f"Error: Parsers.ProcessTermBank: Unhandled term format {type(item)}")
-	print()
+	print("100%")
